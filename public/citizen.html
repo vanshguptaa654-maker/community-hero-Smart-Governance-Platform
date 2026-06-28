@@ -8,7 +8,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="style.css" />
 
   <style>
@@ -724,90 +724,176 @@
   </div>
 
   <script>
-    const API = "";
-    const token = localStorage.getItem("token");
-    const socket = io(window.location.origin);
+    // ===============================
+// Production Configuration
+// ===============================
 
-    let map;
-    let markers = [];
+const API = "";
+const token = localStorage.getItem("token");
 
-    if (!token) {
-      window.location = "login.html";
-    }
+if (!token) {
+    window.location.href = "login.html";
+}
 
+const socket = io(window.location.origin, {
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    timeout: 20000
+});
+
+let map = null;
+let markers = [];
+    
     // Load Google Maps Dynamically using Config Endpoint
     async function loadGoogleMapsScript() {
-      try {
-        const res = await fetch(`${API}/api/config`);
-        const config = await res.json();
-        
+
+    try {
+
+        const response = await fetch("/api/config");
+
+        if (!response.ok) {
+            throw new Error("Unable to load backend configuration.");
+        }
+
+        const config = await response.json();
+
         if (!config.googleMapsApiKey) {
-          console.error("Google Maps API Key missing from backend config.");
-          return;
+            console.error("Google Maps API Key missing.");
+            return;
+        }
+
+        if (window.google && window.google.maps) {
+            initGoogleMap();
+            return;
+        }
+
+        const existingScript = document.getElementById("googleMapsScript");
+
+        if (existingScript) {
+            existingScript.remove();
         }
 
         const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initGoogleMap`;
+
+        script.id = "googleMapsScript";
+
+        script.src =
+            `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initGoogleMap`;
+
         script.async = true;
         script.defer = true;
-        document.head.appendChild(script);
-      } catch (error) {
-        console.error("Failed to load Google Maps config:", error);
-      }
+
+        script.onerror = () => {
+            console.error("Failed to load Google Maps.");
+        };
+
+        document.body.appendChild(script);
+
+    } catch (err) {
+
+        console.error(err);
+
     }
 
+}
+
     // Callback called when Google Maps script finishes loading
-    function initGoogleMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 22.7196, lng: 75.8577 },
+   function initGoogleMap() {
+
+    map = new google.maps.Map(document.getElementById("map"), {
+
+        center: {
+            lat: 22.7196,
+            lng: 75.8577
+        },
+
         zoom: 12,
+
+        mapTypeControl: false,
+
+        streetViewControl: false,
+
+        fullscreenControl: true,
+
         styles: [
-          { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-          { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-          { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-          { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
-          { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
-          { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-          { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-          { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-          { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
-          { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-          { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-          { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+            {
+                elementType: "geometry",
+                stylers: [
+                    {
+                        color: "#242f3e"
+                    }
+                ]
+            },
+            {
+                elementType: "labels.text.fill",
+                stylers: [
+                    {
+                        color: "#d1d5db"
+                    }
+                ]
+            },
+            {
+                featureType: "water",
+                elementType: "geometry",
+                stylers: [
+                    {
+                        color: "#17263c"
+                    }
+                ]
+            }
         ]
-      });
+
+    });
+
+    loadComplaints();
+
+    fetchGPSCoordinates();
+
+}
 
       // Once map finishes preparing, draw stored records out
       loadComplaints();
     }
 
-    function addMarker(lat, lng, issue) {
-      if (!map) return;
-      
-      const position = { lat: parseFloat(lat), lng: parseFloat(lng) };
-      
-      const infowindow = new google.maps.InfoWindow({
-        content: `<div style="color: #000; font-family: sans-serif; font-size:13px; font-weight:500;">${issue}</div>`
-      });
+   function addMarker(lat, lng, issue) {
 
-      const marker = new google.maps.Marker({
-        position: position,
-        map: map,
-        title: issue
-      });
+    if (!map) return;
 
-      marker.addListener("click", () => {
-        infowindow.open(map, marker);
-      });
+    lat = parseFloat(lat);
+    lng = parseFloat(lng);
 
-      markers.push(marker);
-    }
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const marker = new google.maps.Marker({
+        position: {
+            lat,
+            lng
+        },
+        map,
+        title: issue,
+        animation: google.maps.Animation.DROP
+    });
+
+    const infoWindow = new google.maps.InfoWindow({
+        content: `
+            <div style="padding:8px;color:#111;font-size:13px;">
+                <strong>Complaint</strong><br>
+                ${issue}
+            </div>
+        `
+    });
+
+    marker.addListener("click", () => {
+        infoWindow.open({
+            anchor: marker,
+            map
+        });
+    });
+
+    markers.push(marker);
+
+}
 
     function toggleMobileSidebar() {
       const sidebar = document.getElementById("appSidebar");
@@ -929,44 +1015,83 @@
     }
 
     async function loadComplaints() {
-      const res = await fetch(`${API}/api/complaints`, {
-        headers: { authorization: token },
-      });
-      const data = await res.json();
 
-      let html = "";
-      let pending = 0;
-      let resolved = 0;
+    try {
 
-      data.forEach(c => {
-        if (c.status !== "Resolved") {
-          pending++;
-        } else {
-          resolved++;
-        }
+        if (!token) return;
 
-        html += `
-        <tr>
-          <td>${c.issue}</td>
-          <td>${c.department || 'General'}</td>
-          <td><span class="risk ${c.risk ? c.risk.toLowerCase() : 'low'}">${c.risk || 'Low'}</span></td>
-          <td>${c.duplicate ? "Yes" : "No"}</td>
-          <td>${c.status}</td>
-          <td>${c.cluster || '0'}</td>
-        </tr>`;
+        const response = await fetch(`${API}/api/complaints`, {
+            headers: {
+                authorization: token
+            }
+        });
 
-        if (c.location && c.location.lat && c.location.lng) {
-          addMarker(c.location.lat, c.location.lng, c.issue);
-        } else if (c.lat && c.lng) {
-          addMarker(c.lat, c.lng, c.issue);
-        }
-      });
+        if (!response.ok)
+            throw new Error("Unable to load complaints.");
 
-      document.getElementById("complaintsTable").innerHTML = html;
-      document.getElementById("totalComplaints").innerText = data.length;
-      document.getElementById("pendingComplaints").innerText = pending;
-      document.getElementById("resolvedComplaints").innerText = resolved;
+        const complaints = await response.json();
+
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+
+        let html = "";
+
+        let pending = 0;
+        let resolved = 0;
+
+        complaints.forEach(c => {
+
+            if (c.status === "Resolved")
+                resolved++;
+            else
+                pending++;
+
+            html += `
+<tr>
+<td>${c.issue}</td>
+<td>${c.department || "General"}</td>
+<td>
+<span class="risk ${(c.risk || "Low").toLowerCase()}">
+${c.risk || "Low"}
+</span>
+</td>
+<td>${c.duplicate ? "Yes" : "No"}</td>
+<td>${c.status}</td>
+<td>${c.cluster || 0}</td>
+</tr>
+`;
+
+            const lat =
+                c.location?.lat ??
+                c.lat;
+
+            const lng =
+                c.location?.lng ??
+                c.lng;
+
+            if (lat && lng)
+                addMarker(lat, lng, c.issue);
+
+        });
+
+        document.getElementById("complaintsTable").innerHTML = html;
+
+        document.getElementById("totalComplaints").innerText =
+            complaints.length;
+
+        document.getElementById("pendingComplaints").innerText =
+            pending;
+
+        document.getElementById("resolvedComplaints").innerText =
+            resolved;
+
+    } catch (err) {
+
+        console.error(err);
+
     }
+
+}
 
     async function submitComplaint() {
       const citizen = document.getElementById("citizen").value;
@@ -1005,20 +1130,17 @@
       loadComplaints();
     }
 
-    socket.on("newComplaint", (complaint) => {
-      if (complaint) {
-        const lat = complaint.location ? complaint.location.lat : complaint.lat;
-        const lng = complaint.location ? complaint.location.lng : complaint.lng;
-        if (lat && lng) {
-          addMarker(lat, lng, complaint.issue);
-        }
-      }
-      loadComplaints();
-    });
+    socket.on("newComplaint", () => {
+
+    loadComplaints();
+
+});
 
     socket.on("statusUpdated", () => {
-      loadComplaints();
-    });
+
+    loadComplaints();
+
+});
 
     function toggleChat() {
       const body = document.getElementById("chatBody");
