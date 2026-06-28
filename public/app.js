@@ -2,7 +2,7 @@
    SMART GOVERNANCE - FRONTEND APP.JS
 ========================================= */
 
-const API = "http://localhost:5000";
+const API = "";
 
 /* =========================================
    LOADER
