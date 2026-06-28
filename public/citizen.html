@@ -655,7 +655,7 @@
               <i class="fa-solid fa-location-crosshairs"></i> Fetch Location
             </button>
           </div>
-          <span id="locationStatus" class="status-text">Click the button to pull live GPS tracking metadata.</span>
+          <span id="locationStatus" class="status-text">Click the button for GPS tracking or click directly on the map below to choose custom pin coordinates.</span>
         </div>
 
         <input type="hidden" id="lat" />
@@ -724,10 +724,6 @@
   </div>
 
   <script>
-    // ===============================
-    // Production Configuration
-    // ===============================
-
     const API = "";
     const token = localStorage.getItem("token");
 
@@ -744,16 +740,12 @@
 
     let map = null;
     let markers = [];
+    let activeSelectionMarker = null; // Holds the custom marker chosen from clicking the map
         
-    // Load Google Maps Dynamically using Config Endpoint
     async function loadGoogleMapsScript() {
         try {
             const response = await fetch("/api/config");
-
-            if (!response.ok) {
-                throw new Error("Unable to load backend configuration.");
-            }
-
+            if (!response.ok) throw new Error("Unable to load backend configuration.");
             const config = await response.json();
 
             if (!config.googleMapsApiKey) {
@@ -767,22 +759,14 @@
             }
 
             const existingScript = document.getElementById("googleMapsScript");
-
-            if (existingScript) {
-                existingScript.remove();
-            }
+            if (existingScript) existingScript.remove();
 
             const script = document.createElement("script");
-
             script.id = "googleMapsScript";
             script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initGoogleMap`;
             script.async = true;
             script.defer = true;
-
-            script.onerror = () => {
-                console.error("Failed to load Google Maps.");
-            };
-
+            script.onerror = () => console.error("Failed to load Google Maps.");
             document.body.appendChild(script);
 
         } catch (err) {
@@ -790,32 +774,48 @@
         }
     }
 
-    // Callback called when Google Maps script finishes loading
     function initGoogleMap() {
         map = new google.maps.Map(document.getElementById("map"), {
-            center: {
-                lat: 22.7196,
-                lng: 75.8577
-            },
+            center: { lat: 22.7196, lng: 75.8577 },
             zoom: 12,
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true,
             styles: [
-                {
-                    elementType: "geometry",
-                    stylers: [{ color: "#242f3e" }]
-                },
-                {
-                    elementType: "labels.text.fill",
-                    stylers: [{ color: "#d1d5db" }]
-                },
-                {
-                    featureType: "water",
-                    elementType: "geometry",
-                    stylers: [{ color: "#17263c" }]
-                }
+                { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                { elementType: "labels.text.fill", stylers: [{ color: "#d1d5db" }] },
+                { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
             ]
+        });
+
+        // OPTION 2: Add click event listener to select location anywhere from map layout
+        map.addListener("click", (event) => {
+            const lat = event.latLng.lat().toFixed(6);
+            const lng = event.latLng.lng().toFixed(6);
+
+            // Update form coordinate references
+            document.getElementById("lat").value = lat;
+            document.getElementById("lng").value = lng;
+            document.getElementById("locationDisplay").value = `LAT: ${lat} , LNG: ${lng}`;
+
+            const statusText = document.getElementById("locationStatus");
+            statusText.innerText = "✓ Custom incident pin selected manually from map viewport.";
+            statusText.style.color = "#22c55e";
+
+            // Draw or update a temporary custom selection pin on the map viewport
+            if (activeSelectionMarker) {
+                activeSelectionMarker.setPosition(event.latLng);
+            } else {
+                activeSelectionMarker = new google.maps.Marker({
+                    position: event.latLng,
+                    map: map,
+                    title: "Selected Incident Location",
+                    icon: {
+                        url: "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                    },
+                    animation: google.maps.Animation.DROP
+                });
+            }
         });
 
         loadComplaints();
@@ -824,10 +824,8 @@
 
     function addMarker(lat, lng, issue) {
         if (!map) return;
-
         lat = parseFloat(lat);
         lng = parseFloat(lng);
-
         if (isNaN(lat) || isNaN(lng)) return;
 
         const marker = new google.maps.Marker({
@@ -838,50 +836,17 @@
         });
 
         const infoWindow = new google.maps.InfoWindow({
-            content: `
-                <div style="padding:8px;color:#111;font-size:13px;">
-                    <strong>Complaint</strong><br>
-                    ${issue}
-                </div>
-            `
+            content: `<div style="padding:8px;color:#111;font-size:13px;"><strong>Complaint</strong><br>${issue}</div>`
         });
 
         marker.addListener("click", () => {
-            infoWindow.open({
-                anchor: marker,
-                map
-            });
+            infoWindow.open({ anchor: marker, map });
         });
 
         markers.push(marker);
     }
 
-    function toggleMobileSidebar() {
-      const sidebar = document.getElementById("appSidebar");
-      const icon = document.getElementById("sidebarMenuIcon");
-      sidebar.classList.toggle("mobile-open");
-
-      if(sidebar.classList.contains("mobile-open")) {
-        icon.className = "fa-solid fa-xmark";
-      } else {
-        icon.className = "fa-solid fa-bars";
-      }
-    }
-
-    function scrollToSection(id, element) {
-      const target = document.getElementById(id);
-      document.getElementById("appSidebar").classList.remove("mobile-open");
-      document.getElementById("sidebarMenuIcon").className = "fa-solid fa-bars";
-
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
-        document.querySelectorAll('.sidebar ul li.sidebar-item').forEach(li => {
-          li.classList.remove('active');
-        });
-        element.classList.add('active');
-      }
-    }
-
+    // OPTION 1: Fetch Current GPS Location from Device Hardware
     function fetchGPSCoordinates() {
       const statusText = document.getElementById("locationStatus");
       const displayField = document.getElementById("locationDisplay");
@@ -908,8 +873,22 @@
           statusText.style.color = "#22c55e";
           
           if (map) {
-            map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
+            const positionLatLng = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+            map.setCenter(positionLatLng);
             map.setZoom(14);
+
+            // Sync the manual pinpoint marker placement to match current geolocation position
+            if (activeSelectionMarker) {
+                activeSelectionMarker.setPosition(positionLatLng);
+            } else {
+                activeSelectionMarker = new google.maps.Marker({
+                    position: positionLatLng,
+                    map: map,
+                    title: "Selected Incident Location",
+                    icon: { url: "https://maps.google.com/mapfiles/ms/icons/green-dot.png" },
+                    animation: google.maps.Animation.DROP
+                });
+            }
           }
         },
         (error) => {
@@ -922,6 +901,25 @@
         },
         { enableHighAccuracy: true, timeout: 8000 }
       );
+    }
+
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById("appSidebar");
+      const icon = document.getElementById("sidebarMenuIcon");
+      sidebar.classList.toggle("mobile-open");
+      icon.className = sidebar.classList.contains("mobile-open") ? "fa-solid fa-xmark" : "fa-solid fa-bars";
+    }
+
+    function scrollToSection(id, element) {
+      const target = document.getElementById(id);
+      document.getElementById("appSidebar").classList.remove("mobile-open");
+      document.getElementById("sidebarMenuIcon").className = "fa-solid fa-bars";
+
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+        document.querySelectorAll('.sidebar ul li.sidebar-item').forEach(li => li.classList.remove('active'));
+        element.classList.add('active');
+      }
     }
 
     function readImageAsBase64(file) {
@@ -947,23 +945,15 @@
 
         const res = await fetch(`${API}/api/analyze-image`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "authorization": token
-          },
+          headers: { "Content-Type": "application/json", "authorization": token },
           body: JSON.stringify({ image: base64Image })
         });
 
         if (!res.ok) throw new Error("AI analysis endpoint error");
-
         const data = await res.json();
 
-        if (data.citizenName) {
-          document.getElementById("citizen").value = data.citizenName;
-        }
-        if (data.problemStatement) {
-          document.getElementById("issue").value = data.problemStatement;
-        }
+        if (data.citizenName) document.getElementById("citizen").value = data.citizenName;
+        if (data.problemStatement) document.getElementById("issue").value = data.problemStatement;
 
         aiStatus.innerText = "✓ Processing complete! Title, citizen profile, and descriptions synchronized.";
         aiStatus.style.color = "#22c55e";
@@ -978,13 +968,8 @@
     async function loadComplaints() {
         try {
             if (!token) return;
-
-            const response = await fetch(`${API}/api/complaints`, {
-                headers: { authorization: token }
-            });
-
+            const response = await fetch(`${API}/api/complaints`, { headers: { authorization: token } });
             if (!response.ok) throw new Error("Unable to load complaints.");
-
             const complaints = await response.json();
 
             markers.forEach(marker => marker.setMap(null));
@@ -1002,11 +987,7 @@
                     <tr>
                     <td>${c.issue}</td>
                     <td>${c.department || "General"}</td>
-                    <td>
-                    <span class="risk ${(c.risk || "Low").toLowerCase()}">
-                    ${c.risk || "Low"}
-                    </span>
-                    </td>
+                    <td><span class="risk ${(c.risk || "Low").toLowerCase()}">${c.risk || "Low"}</span></td>
                     <td>${c.duplicate ? "Yes" : "No"}</td>
                     <td>${c.status}</td>
                     <td>${c.cluster || 0}</td>
@@ -1015,7 +996,6 @@
 
                 const lat = c.location?.lat ?? c.lat;
                 const lng = c.location?.lng ?? c.lng;
-
                 if (lat && lng) addMarker(lat, lng, c.issue);
             });
 
@@ -1036,16 +1016,13 @@
       const lng = document.getElementById("lng").value;
 
       if (!citizen || !issue || !lat || !lng) {
-        alert("Please ensure your coordinates are synchronized via 'Fetch Location' before posting.");
+        alert("Please ensure your coordinates are synchronized via 'Fetch Location' or by selecting a spot on the map before posting.");
         return;
       }
 
       const res = await fetch(`${API}/api/complaints`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: token,
-        },
+        headers: { "Content-Type": "application/json", authorization: token },
         body: JSON.stringify({ citizen, issue, lat, lng }),
       });
 
@@ -1058,33 +1035,27 @@
       document.getElementById("lng").value = "";
       document.getElementById("locationDisplay").value = "";
       document.getElementById("aiImageInput").value = "";
-      document.getElementById("locationStatus").innerText = "Click the button to pull live GPS tracking metadata.";
+      document.getElementById("locationStatus").innerText = "Click the button for GPS tracking or click directly on the map below to choose custom pin coordinates.";
       document.getElementById("locationStatus").style.color = "#637381";
       document.getElementById("aiStatus").innerText = "Upload a civic issue photograph to extract names, title details, and issue statements automatically via AI.";
       document.getElementById("aiStatus").style.color = "#637381";
 
+      if (activeSelectionMarker) {
+          activeSelectionMarker.setMap(null);
+          activeSelectionMarker = null;
+      }
+
       loadComplaints();
     }
 
-    socket.on("newComplaint", () => {
-        loadComplaints();
-    });
-
-    socket.on("statusUpdated", () => {
-        loadComplaints();
-    });
+    socket.on("newComplaint", () => loadComplaints());
+    socket.on("statusUpdated", () => loadComplaints());
 
     function toggleChat() {
       const body = document.getElementById("chatBody");
       const icon = document.getElementById("chatIcon");
-      
       body.classList.toggle("active");
-      
-      if (body.classList.contains("active")) {
-        icon.className = "fa-solid fa-xmark";
-      } else {
-        icon.className = "fa-solid fa-comment-dots";
-      }
+      icon.className = body.classList.contains("active") ? "fa-solid fa-xmark" : "fa-solid fa-comment-dots";
     }
 
     async function sendMessage() {
@@ -1121,7 +1092,6 @@
       window.location = "login.html";
     }
 
-    // Launch configuration trigger on load pipeline
     loadGoogleMapsScript();
   </script>
 </body>
