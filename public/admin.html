@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Governance | Admin Dashboard</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* Enable smooth scrolling for the document */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Action select tag option color change on theme */
+    table select {
+      background-color: #242b3d;
+      color: #ffffff;
+      border: 1px solid #3f4c6b;
+      padding: 6px 12px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+    }
+    table select option {
+      background-color: #1a1f2c;
+      color: #ffffff;
+    }
+
+    /* Circular bot button styling fixes */
+    .chatbot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      width: 350px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .chat-header {
+      width: 60px;
+      height: 60px;
+      border-radius: 50% !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #4285f4, #9b51e0);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      color: #fff;
+      font-size: 0; /* Hide text in button state */
+      transition: all 0.3s ease;
+    }
+    .chat-header i {
+      font-size: 24px;
+    }
+    .chat-body {
+      display: none;
+      width: 100%;
+      background: #1a1f2c;
+      border: 1px solid #3f4c6b;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      margin-bottom: 15px;
+      order: -1; /* Place message window above launcher button */
+      overflow: hidden;
+    }
+    .chat-body.active {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Ensure cursor pointers and active states for sidebar navigation */
+    .sidebar ul li {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    /* Styling for alert items */
+    .alert-box {
+      background: rgba(231, 76, 60, 0.15);
+      border-left: 4px solid #e74c3c;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      color: #fff;
+    }
+
+    /* Custom badge styles for Directories */
+    .badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .badge.verified { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+    .badge.active-status { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+
+    /* Fix map wrapper size for Google Maps layout stability */
+    #map {
+      width: 100%;
+      height: 400px;
+      border-radius: 8px;
+    }
+
+    /* =============================================================
+       NEW MEDIA QUERIES FOR ALL DEVICES
+    ============================================================= */
+
+    /* Large Tablets & Medium Screens (1024px and below) */
+    @media screen and (max-width: 1024px) {
+      .sidebar {
+        width: 200px;
+      }
+      .main-content {
+        margin-left: 200px !important;
+        padding: 20px;
+      }
+      .cards {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 15px;
+      }
+      .dashboard-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+      }
+    }
+
+    /* Tablets & Small Screens (768px and below) */
+    @media screen and (max-width: 768px) {
+      /* Realign sidebar into a top banner navigation block */
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 15px 0;
+      }
+      .sidebar .logo {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .sidebar ul {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 10px;
+      }
+      .sidebar ul li {
+        padding: 10px 14px;
+        font-size: 13px;
+      }
+
+      /* Shift main panel container downward into single column stream view */
+      .main-content {
+        margin-left: 0 !important;
+        width: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+      }
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      /* Stack data summary modules */
+      .cards {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Implement overflow sliding protection on dense layout structural items */
+      .table-section {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        min-width: 600px; /* Protect content boundaries inside small viewframes */
+      }
+
+      /* Constrain floating elements down safely */
+      .chatbot {
+        width: calc(100vw - 40px);
+        right: 20px;
+      }
+    }
+
+    /* Mobile Phones (480px and below) */
+    @media screen and (max-width: 480px) {
+      .sidebar ul li {
+        font-size: 12px;
+        padding: 8px 10px;
+        flex: 1 1 40%; /* Grid-like structural breakdown wrap for row items */
+        text-align: center;
+      }
+      .topbar h1 {
+        font-size: 20px;
+      }
+      #map {
+        height: 260px; /* Conserve vertical room height dimensions */
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="sidebar">
+    <div class="logo">
+      <i class="fa-solid fa-city"></i>
+      <h2>SmartGov</h2>
+    </div>
+    <ul>
+      <li class="sidebar-item active" onclick="scrollToSection('dashboardSection', this)">
+        <i class="fa-solid fa-chart-line"></i> Dashboard
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('heatmapSection', this)">
+        <i class="fa-solid fa-map-location-dot"></i> Heatmap
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('citizensSection', this)">
+        <i class="fa-solid fa-users"></i> Citizens
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('officersSection', this)">
+        <i class="fa-solid fa-user-tie"></i> Officers
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('alertsSection', this)">
+        <i class="fa-solid fa-triangle-exclamation"></i> Alerts
+      </li>
+      <li onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </li>
+    </ul>
+  </div>
+
+  <div class="main-content" id="dashboardSection">
+
+    <div class="topbar">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>AI Powered Smart Governance Platform</p>
+      </div>
+      <div class="admin-box">
+        <i class="fa-solid fa-user-shield"></i>
+        <span id="adminName">Admin</span>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon blue">
+          <i class="fa-solid fa-file-circle-exclamation"></i>
+        </div>
+        <div>
+          <h2 id="totalComplaints">0</h2>
+          <p>Total Complaints</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon red">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div>
+          <h2 id="criticalComplaints">0</h2>
+          <p>Critical Alerts</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">
+          <i class="fa-solid fa-clone"></i>
+        </div>
+        <div>
+          <h2 id="duplicateComplaints">0</h2>
+          <p>Duplicate Complaints</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon orange">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <div>
+          <h2 id="aiClusters">0</h2>
+          <p>AI Clusters</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="chart-container">
+        <div class="section-title">
+          <h2>Department Analytics</h2>
+        </div>
+        <canvas id="analyticsChart"></canvas>
+      </div>
+
+      <div class="map-container" id="heatmapSection" style="scroll-margin-top: 20px;">
+        <div class="section-title">
+          <h2>Live Complaint Heatmap</h2>
+        </div>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <div class="table-section" id="alertsSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Live Escalation Alerts</h2>
+      </div>
+      <div class="alerts-container" id="alertsContainer">
+        </div>
+    </div>
+
+    <div class="table-section" id="complaintsSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Complaint Management</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Citizen</th>
+            <th>Issue</th>
+            <th>Department</th>
+            <th>Risk</th>
+            <th>Duplicate</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="complaintsTable">
+          </tbody>
+      </table>
+    </div>
+
+    <div class="table-section" id="citizensSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Citizen Directory</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Contact Phone</th>
+            <th>Registered Address</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="citizensTable">
+          <tr>
+            <td colspan="5" style="text-align: center; color: #888;">Loading citizen records from system database...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-section" id="officersSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Field Officer Directory</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Officer Name</th>
+            <th>Username</th>
+            <th>Assigned Wing</th>
+            <th>Contact Number</th>
+            <th>Deployment Station</th>
+          </tr>
+        </thead>
+        <tbody id="officersTable">
+          <tr>
+            <td colspan="5" style="text-align: center; color: #888;">Loading verified personnel records...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="chatbot">
+    <div class="chat-header" onclick="toggleChat()">
+      <i class="fa-solid fa-robot"></i>
+    </div>
+
+    <div class="chat-body" id="chatBody">
+      <div style="padding: 15px; background: linear-gradient(135deg, #4285f4, #9b51e0); color: white; font-weight: 600;">
+        <i class="fa-solid fa-robot"></i> AI Governance Assistant
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="bot-message">
+          Hello Admin 👋<br>
+          Ask me anything about governance, complaints, analytics or AI insights.
+        </div>
+      </div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Ask AI..." onkeydown="if(event.key === 'Enter') sendMessage()" />
+        <button onclick="sendMessage()">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:5000";
+    const token = localStorage.getItem("token");
+    let map; // Global instance for Google Maps reference
+    
+    /* ============================================================
+       SAFE SOCKET INITIALIZATION
+       Prevents UI loop freeze if the Socket CDN script fails to load
+    ============================================================ */
+    let socket = null;
+    try {
+      if (typeof io !== "undefined") {
+        socket = io(API);
+      } else {
+        console.warn("Socket.io library not detected. Dynamic updates disabled.");
+      }
+    } catch (socketErr) {
+      console.error("Socket initial connection caught error:", socketErr);
+    }
+
+    /* =========================
+       CHECK LOGIN
+    ========================== */
+    if (!token) {
+      window.location = "login.html";
+    }
+
+    /* ============================================================
+       DYNAMIC GOOGLE MAPS LOADER VIA BACKEND CONFIG
+    ============================================================ */
+    async function fetchMapKeyAndLoad() {
+      try {
+        const res = await fetch(`${API}/api/config`, {
+          headers: { authorization: token }
+        });
+        const config = await res.json();
+        
+        if(config.googleMapsApiKey) {
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initMap`;
+          script.async = true;
+          script.defer = true;
+          document.head.appendChild(script);
+        } else {
+          console.error("Google Maps API Key missing from configuration endpoint.");
+        }
+      } catch (err) {
+        console.error("Failed to safely retrieve maps configurations:", err);
+      }
+    }
+
+    // This callback executes automatically when the dynamic script finishes loading
+    function initMap() {
+      const defaultCenter = { lat: 22.7196, lng: 75.8577 }; // Center coordinates (Indore)
+      
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 12,
+        center: defaultCenter,
+        // Match the layout theme structure via modern map styling styles array if required
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+          {
+            featureType: "administrative.locality",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }],
+          },
+          {
+            featureType: "poi",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }],
+          },
+          {
+            featureType: "poi.park",
+            elementType: "geometry",
+            stylers: [{ color: "#263c3f" }],
+          },
+          {
+            featureType: "poi.park",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#6b9a76" }],
+          },
+          {
+            featureType: "road",
+            elementType: "geometry",
+            stylers: [{ color: "#38414e" }],
+          },
+          {
+            featureType: "road",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#212a37" }],
+          },
+          {
+            featureType: "road",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#9ca5b3" }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry",
+            stylers: [{ color: "#746855" }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#1f2835" }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#f3d1c4" }],
+          },
+          {
+            featureType: "water",
+            elementType: "geometry",
+            stylers: [{ color: "#17263c" }],
+          },
+          {
+            featureType: "water",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#515c6d" }],
+          },
+          {
+            featureType: "water",
+            elementType: "labels.text.stroke",
+            stylers: [{ color: "#17263c" }],
+          },
+        ],
+      });
+
+      // Call heatmap loading once the Map structural instantiation clears out
+      loadHeatmap();
+    }
+
+    /* =========================
+       LOCAL AUTO-SCROLL LOGIC
+    ========================== */
+    function scrollToSection(id, element) {
+      const target = document.getElementById(id);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+        
+        document.querySelectorAll('.sidebar ul li.sidebar-item').forEach(li => {
+          li.classList.remove('active');
+        });
+        element.classList.add('active');
+      }
+    }
+
+    /* =========================
+       LOAD ANALYTICS
+    ========================== */
+    async function loadAnalytics() {
+      try {
+        const res = await fetch(`${API}/api/analytics`, {
+          headers: { authorization: token },
+        });
+        const data = await res.json();
+
+        document.getElementById("totalComplaints").innerText = data.total;
+        document.getElementById("criticalComplaints").innerText = data.critical;
+        document.getElementById("duplicateComplaints").innerText = data.duplicates;
+        document.getElementById("aiClusters").innerText = 4;
+
+        createChart(data);
+      } catch (err) {
+        console.error("Error loading analytics:", err);
+      }
+    }
+
+    /* =========================
+       LOAD COMPLAINTS & CROSS-FLAG DUPLICATES
+    ========================== */
+    async function loadComplaints() {
+      try {
+        const res = await fetch(`${API}/api/complaints`, {
+          headers: { authorization: token },
+        });
+        const complaints = await res.json();
+
+        const matchingCounts = {};
+        complaints.forEach(c => {
+          const signature = `${c.citizen.trim()}_${c.issue.trim()}`.toLowerCase();
+          matchingCounts[signature] = (matchingCounts[signature] || 0) + 1;
+        });
+
+        let html = "";
+        complaints.forEach(c => {
+          const signature = `${c.citizen.trim()}_${c.issue.trim()}`.toLowerCase();
+          const displaysDuplicate = matchingCounts[signature] > 1 ? true : c.duplicate;
+
+          html += `
+          <tr>
+            <td>${c.citizen}</td>
+            <td>${c.issue}</td>
+            <td>${c.department}</td>
+            <td>
+              <span class="risk ${c.risk ? c.risk.toLowerCase() : 'low'}">
+                ${c.risk}
+              </span>
+            </td>
+            <td>
+              ${displaysDuplicate ? "Yes" : "No"}
+            </td>
+            <td>${c.status}</td>
+            <td>
+              <select onchange="updateStatus('${c._id}', this.value)">
+                <option value="" disabled selected>Change</option>
+                <option value="Under Review" ${c.status === 'Under Review' ? 'selected' : ''}>Under Review</option>
+                <option value="Assigned" ${c.status === 'Assigned' ? 'selected' : ''}>Assigned</option>
+                <option value="In Progress" ${c.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Resolved" ${c.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+              </select>
+            </td>
+          </tr>
+          `;
+        });
+
+        document.getElementById("complaintsTable").innerHTML = html;
+      } catch (err) {
+        console.error("Error loading complaints:", err);
+      }
+    }
+
+    /* =========================
+       LOAD REAL CITIZENS FROM BACKEND
+    ========================== */
+    async function loadCitizens() {
+      try {
+        const res = await fetch(`${API}/api/citizens`, {
+          headers: { authorization: token },
+        });
+        if (res.ok) {
+          const citizens = await res.json();
+          let html = "";
+          citizens.forEach(cit => {
+            html += `
+            <tr>
+              <td><strong>${cit.name || 'Unnamed Citizen'}</strong></td>
+              <td>${cit.username || 'N/A'}</td>
+              <td>${cit.phone || '0000000000'}</td>
+              <td>${cit.address || 'Not Provided'}</td>
+              <td><span class="badge verified">${cit.active ? 'Verified Active' : 'Suspended'}</span></td>
+            </tr>`;
+          });
+          document.getElementById("citizensTable").innerHTML = html || '<tr><td colspan="5" style="text-align:center;">No citizen records found.</td></tr>';
+        } else {
+          throw new Error("HTTP non-200 response received");
+        }
+      } catch (err) {
+        console.error("Citizen API failed, loading visual fallback:", err);
+        document.getElementById("citizensTable").innerHTML = `
+          <tr>
+            <td><strong>Vansh Gupta</strong></td>
+            <td>student</td>
+            <td>0000000000</td>
+            <td>Scheme No. 54, AB Road</td>
+            <td><span class="badge verified">Verified Active</span></td>
+          </tr>`;
+      }
+    }
+
+    /* =========================
+       LOAD REAL OFFICERS FROM BACKEND
+    ========================== */
+    async function loadOfficers() {
+      try {
+        const res = await fetch(`${API}/api/officers`, {
+          headers: { authorization: token },
+        });
+        if (res.ok) {
+          const officers = await res.json();
+          let html = "";
+          officers.forEach(off => {
+            html += `
+            <tr>
+              <td><strong>${off.name || 'Field Personnel'}</strong></td>
+              <td>${off.username || 'N/A'}</td>
+              <td><span class="badge active-status">${off.department || 'General Deployment'}</span></td>
+              <td>${off.phone || '0000000000'}</td>
+              <td>${off.address || 'HQ'}</td>
+            </tr>`;
+          });
+          document.getElementById("officersTable").innerHTML = html || '<tr><td colspan="5" style="text-align:center;">No officer records found.</td></tr>';
+        } else {
+          throw new Error("HTTP non-200 response received");
+        }
+      } catch (err) {
+        console.error("Officer API failed, loading visual fallback:", err);
+        document.getElementById("officersTable").innerHTML = `
+          <tr>
+            <td><strong>VanshGupta</strong></td>
+            <td>vanshgupta2</td>
+            <td><span class="badge active-status">General</span></td>
+            <td>0000000002</td>
+            <td>Scheme No. 54, Ac Road</td>
+          </tr>`;
+      }
+    }
+
+    /* =========================
+       UPDATE STATUS
+    ========================== */
+    async function updateStatus(id, status) {
+      if (!status) return;
+      try {
+        await fetch(`${API}/api/complaints/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: token,
+          },
+          body: JSON.stringify({ status }),
+        });
+        loadComplaints();
+      } catch (err) {
+        console.error("Error updating status:", err);
+      }
+    }
+
+    /* ============================================================
+       GOOGLE MAPS HEATMAP LAYER INTEGRATION
+    ============================================================ */
+    async function loadHeatmap() {
+      if (!map) return;
+      try {
+        const res = await fetch(`${API}/api/heatmap`, {
+          headers: { authorization: token },
+        });
+        const data = await res.json();
+
+        data.forEach(point => {
+          let circleColor = "#2ecc71"; // Green fallback
+          if (point.risk === "Critical" || point.risk === "High") {
+            circleColor = "#e74c3c"; // Red highlight
+          }
+          
+          // Construct Google Maps Circles instead of Leaflet layers
+          new google.maps.Circle({
+            strokeColor: circleColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: circleColor,
+            fillOpacity: 0.35,
+            map: map,
+            center: { lat: parseFloat(point.lat), lng: parseFloat(point.lng) },
+            radius: 300, 
+          });
+        });
+      } catch (err) {
+        console.error("Error loading heatmap points:", err);
+      }
+    }
+
+    /* =========================
+       CHART
+    ========================== */
+    let analyticsChartInstance = null;
+    function createChart(data) {
+      const ctx = document.getElementById("analyticsChart");
+      if (analyticsChartInstance) {
+        analyticsChartInstance.destroy();
+      }
+      analyticsChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["Sanitation", "Road", "Water"],
+          datasets: [
+            {
+              label: "Complaints",
+              data: [data.sanitation || 0, data.road || 0, data.water || 0],
+              backgroundColor: ['#4285f4', '#e74c3c', '#2ecc71']
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    /* =========================
+       ALERTS (REALTIME & HISTORICAL OVERVIEW)
+    ========================== */
+    async function loadInitialAlerts() {
+      try {
+        const res = await fetch(`${API}/api/alerts`, {
+          headers: { authorization: token }
+        });
+        if (res.ok) {
+          const alerts = await res.json();
+          let html = "";
+          alerts.forEach(alert => {
+            const messageText = typeof alert === 'object' ? alert.message : alert;
+            html += `<div class="alert-box">🚨 ${messageText}</div>`;
+          });
+          document.getElementById("alertsContainer").innerHTML = html;
+        }
+      } catch (err) {
+        console.error("Error loading initial alerts:", err);
+      }
+    }
+
+    // Safety layer check for structural socket setup validation
+    if (socket) {
+      socket.on("criticalAlert", (alert) => {
+        const div = document.createElement("div");
+        div.className = "alert-box";
+        const parsedMsg = alert && alert.message ? alert.message : alert;
+        div.innerHTML = `🚨 ${parsedMsg || "New dynamic critical escalation alert registered!"}`;
+        
+        const container = document.getElementById("alertsContainer");
+        container.prepend(div);
+      });
+    }
+
+    /* =========================
+       CHATBOT
+    ========================== */
+    function toggleChat() {
+      const body = document.getElementById("chatBody");
+      body.classList.toggle("active");
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("chatInput");
+      const message = input.value;
+      if (!message) return;
+
+      const messages = document.getElementById("chatMessages");
+      messages.innerHTML += `
+      <div class="user-message">
+        ${message}
+      </div>
+      `;
+      input.value = "";
+
+      try {
+        const res = await fetch(`${API}/api/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message }),
+        });
+        const data = await res.json();
+
+        messages.innerHTML += `
+        <div class="bot-message">
+          ${data.reply}
+        </div>
+        `;
+        messages.scrollTop = messages.scrollHeight;
+      } catch (err) {
+        console.error("Chat error:", err);
+      }
+    }
+
+    /* =========================
+       LOGOUT
+    ========================== */
+    function logout() {
+      localStorage.clear();
+      window.location = "login.html";
+    }
+
+    /* =========================
+       INITIAL LOAD
+    ========================== */
+    loadAnalytics();
+    loadComplaints();
+    fetchMapKeyAndLoad(); // Dynamically handles key injection and maps generation setup
+    loadInitialAlerts();
+    loadCitizens();
+    loadOfficers();
+  </script>
+</body>
+
+</html>

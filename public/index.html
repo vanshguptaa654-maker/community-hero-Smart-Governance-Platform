@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Governance | Public Portal</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background: #0b1020; color: white; overflow-x: hidden; }
+
+    /* BACKGROUND ELEMENTS */
+    .bg-blur { position: fixed; width: 500px; height: 500px; background: #4f46e5; filter: blur(140px); top: -100px; left: -100px; opacity: 0.4; z-index: 0; pointer-events: none; }
+    .bg-grid { position: fixed; inset: 0; background-image: radial-gradient(#ffffff10 1px, transparent 1px); background-size: 40px 40px; opacity: 0.2; z-index: 0; pointer-events: none; }
+
+    /* LAYOUT */
+    .nav { display: flex; justify-content: space-between; padding: 20px 60px; align-items: center; position: relative; z-index: 10; }
+    .logo { display: flex; gap: 10px; font-weight: 600; font-size: 1.2rem; }
+    .nav-links a { color: #ccc; margin-left: 20px; text-decoration: none; transition: 0.3s; }
+    .nav-links a:hover { color: white; }
+    .btn-nav { background: #4f46e5; padding: 8px 16px; border-radius: 8px; color: white; text-decoration: none; }
+
+    .hero { display: flex; justify-content: space-between; padding: 80px 60px; align-items: center; position: relative; z-index: 5; }
+    .hero h1 { font-size: 52px; line-height: 1.2; }
+    .hero span { color: #4f46e5; }
+    .hero p { color: #aaa; max-width: 500px; margin-top: 15px; }
+
+    .cta { margin-top: 30px; display: flex; gap: 15px; }
+    .btn { padding: 12px 22px; border-radius: 10px; text-decoration: none; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+    .primary { background: #4f46e5; color: white; }
+    .primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(79,70,229,0.4); }
+    .ghost { border: 1px solid #444; color: white; }
+    .ghost:hover { background: #1a1f35; }
+
+    .features { display: flex; justify-content: center; gap: 25px; padding: 60px; position: relative; z-index: 5; }
+    .feature { background: rgba(255,255,255,0.03); padding: 25px; border-radius: 15px; width: 280px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
+    .feature:hover { border-color: #4f46e5; }
+    .feature i { font-size: 24px; color: #4f46e5; margin-bottom: 10px; }
+  </style>
+</head>
+
+<body>
+
+  <div class="bg-blur"></div>
+  <div class="bg-grid"></div>
+
+  <div class="nav">
+    <div class="logo">
+      <i class="fa-solid fa-city"></i> Smart Governance
+    </div>
+    <div class="nav-links">
+      <a href="#">About</a>
+      <a href="login.html" class="btn-nav">Login</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div>
+      <h1>AI-Powered<br><span>Citizen Governance</span></h1>
+      <p>A smart, transparent system for grievance tracking, AI-based automated routing, and real-time administrative monitoring.</p>
+      <div class="cta">
+        <a href="register.html" class="btn primary">Get Started <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="login.html" class="btn ghost">Login</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <i class="fa-solid fa-brain"></i>
+      <h3>AI Routing</h3>
+      <p style="color:#aaa; font-size: 0.9rem; margin-top: 5px;">Automatic grievance classification and assignment.</p>
+    </div>
+    <div class="feature">
+      <i class="fa-solid fa-clock"></i>
+      <h3>Live Tracking</h3>
+      <p style="color:#aaa; font-size: 0.9rem; margin-top: 5px;">Real-time status updates for every citizen.</p>
+    </div>
+    <div class="feature">
+      <i class="fa-solid fa-shield-halved"></i>
+      <h3>Secure System</h3>
+      <p style="color:#aaa; font-size: 0.9rem; margin-top: 5px;">Enterprise-grade encrypted data protection.</p>
+    </div>
+  </div>
+
+</body>
+</html>

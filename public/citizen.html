@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Governance | Citizen Portal</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* Global Reset & Base Typography Settings */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background-color: #0f1319;
+      color: #cbd5e1;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Layout Configurations */
+    .sidebar {
+      width: 260px;
+      background-color: #161c24;
+      border-right: 1px solid #222b36;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+
+    /* Mobile Quick-Toggle Button for Sidebar (Visible only on mobile) */
+    .mobile-nav-toggle {
+      display: none;
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      z-index: 110;
+      background: linear-gradient(135deg, #4285f4, #9b51e0);
+      border: none;
+      color: white;
+      width: 45px;
+      height: 45px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 20px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .sidebar .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #222b36;
+      margin-bottom: 24px;
+    }
+
+    .sidebar .logo i {
+      font-size: 24px;
+      color: #4285f4;
+    }
+
+    .sidebar .logo h2 {
+      font-size: 20px;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar ul li {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      color: #919eab;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .sidebar ul li:hover, 
+    .sidebar ul li.active {
+      color: #ffffff;
+      background-color: rgba(66, 133, 244, 0.08);
+    }
+
+    .sidebar ul li.active i {
+      color: #4285f4;
+    }
+
+    /* Main Dashboard Section Canvas */
+    .main-content {
+      margin-left: 260px;
+      flex: 1;
+      padding: 40px;
+      max-width: 1300px;
+      width: calc(100% - 260px);
+      transition: all 0.3s ease;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      gap: 20px;
+    }
+
+    .topbar h1 {
+      font-size: 28px;
+      color: #ffffff;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .topbar p {
+      font-size: 14px;
+      color: #637381;
+    }
+
+    .admin-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: #161c24;
+      padding: 10px 18px;
+      border-radius: 20px;
+      border: 1px solid #222b36;
+      font-size: 14px;
+      color: #ffffff;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .admin-box i {
+      color: #4285f4;
+    }
+
+    /* Metrics Analytics Cards Grid */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background-color: #161c24;
+      border: 1px solid #222b36;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .card-icon.blue { background-color: rgba(66, 133, 244, 0.12); color: #4285f4; }
+    .card-icon.orange { background-color: rgba(255, 171, 0, 0.12); color: #ffab00; }
+    .card-icon.green { background-color: rgba(34, 197, 94, 0.12); color: #22c55e; }
+
+    .card h2 {
+      font-size: 24px;
+      color: #ffffff;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: #919eab;
+    }
+
+    /* Form Container Setup */
+    .form-section, .map-container, .table-section {
+      background-color: #161c24;
+      border: 1px solid #222b36;
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 32px;
+    }
+
+    .section-title h2 {
+      font-size: 20px;
+      color: #ffffff;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-group label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #919eab;
+    }
+
+    .input-group input[type="text"] {
+      background-color: #212b36;
+      border: 1px solid rgba(145, 158, 171, 0.2);
+      color: #ffffff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .input-group input[type="text"]:focus {
+      border-color: #4285f4;
+    }
+
+    /* Custom Input Location Setup */
+    .location-input-wrapper {
+      display: flex;
+      align-items: center;
+      background-color: #1a212b;
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      padding: 4px 6px;
+      gap: 12px;
+      height: 50px;
+    }
+
+    .location-input-wrapper input {
+      border: none !important;
+      background: transparent !important;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: 700;
+      font-size: 15px;
+      color: #2ecc71 !important;
+      flex: 1;
+      outline: none;
+      padding-left: 4px;
+    }
+
+    .location-btn {
+      background: linear-gradient(135deg, #4285f4, #9b51e0);
+      color: #ffffff;
+      border: none;
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .location-btn:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: #637381;
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* Submission Execution Bar Styling */
+    .submit-btn {
+      width: 100%;
+      background-color: #ffffff;
+      color: #0f1319;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .submit-btn:hover {
+      background-color: #f4f6f8;
+      transform: translateY(-1px);
+    }
+
+    /* Map Interface Rendering Layout */
+    #map {
+      height: 400px;
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #222b36;
+    }
+
+    /* Clean History Table Layout Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background-color: #212b36;
+      color: #919eab;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 16px;
+      font-size: 14px;
+      color: #ffffff;
+      border-bottom: 1px solid #222b36;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .risk {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .risk.critical, .risk.high { background-color: rgba(255, 86, 48, 0.16); color: #ff5630; }
+    .risk.medium { background-color: rgba(255, 171, 0, 0.16); color: #ffab00; }
+    .risk.low { background-color: rgba(34, 197, 94, 0.16); color: #22c55e; }
+
+    /* Floating Chatbot Layout Configuration */
+    .chatbot-wrapper {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .chat-trigger-circular-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4285f4, #9b51e0);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 22px;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .chat-trigger-circular-btn:hover {
+      transform: scale(1.06);
+    }
+
+    .floating-chat-container {
+      display: none;
+      width: 360px;
+      height: 460px;
+      background-color: #161c24;
+      border: 1px solid #222b36;
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      margin-bottom: 16px;
+      overflow: hidden;
+      flex-direction: column;
+      animation: popupWindow 0.2s ease-out forwards;
+    }
+
+    .floating-chat-container.active {
+      display: flex;
+    }
+
+    @keyframes popupWindow {
+      from { opacity: 0; transform: translateY(12px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* MEDIA QUERIES FOR ALL DEVICES */
+    @media screen and (max-width: 1024px) {
+      .main-content {
+        padding: 30px;
+      }
+      .form-section, .map-container, .table-section {
+        padding: 24px;
+      }
+    }
+
+    @media screen and (max-width: 768px) {
+      .mobile-nav-toggle {
+        display: flex;
+      }
+
+      .sidebar {
+        transform: translateX(-100%);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+      }
+
+      .sidebar.mobile-open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 80px 20px 20px 20px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .admin-box {
+        align-self: flex-start;
+      }
+
+      .form-grid-inner {
+        grid-template-columns: 1fr !important;
+      }
+
+      #map {
+        height: 320px;
+      }
+    }
+
+    @media screen and (max-width: 480px) {
+      .main-content {
+        padding: 80px 14px 14px 14px;
+      }
+
+      .topbar h1 {
+        font-size: 22px;
+      }
+
+      .form-section, .map-container, .table-section {
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .location-input-wrapper {
+        flex-direction: column;
+        height: auto;
+        padding: 10px;
+        align-items: stretch;
+      }
+
+      .location-input-wrapper i {
+        display: none;
+      }
+
+      .location-input-wrapper input {
+        padding: 8px 0 !important;
+        text-align: center;
+        font-size: 13px;
+      }
+
+      .location-btn {
+        width: 100%;
+        justify-content: center;
+        height: 40px;
+      }
+
+      .floating-chat-container {
+        width: calc(100vw - 32px);
+        right: 0px;
+        height: 400px;
+      }
+      
+      .chatbot-wrapper {
+        right: 16px;
+        bottom: 16px;
+      }
+
+      th, td {
+        padding: 12px 10px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <button class="mobile-nav-toggle" onclick="toggleMobileSidebar()">
+    <i class="fa-solid fa-bars" id="sidebarMenuIcon"></i>
+  </button>
+
+  <div class="sidebar" id="appSidebar">
+    <div class="logo">
+      <i class="fa-solid fa-city"></i>
+      <h2>SmartGov</h2>
+    </div>
+    <ul>
+      <li class="sidebar-item active" onclick="scrollToSection('dashboardSection', this)">
+        <i class="fa-solid fa-house"></i> Dashboard
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('submitSection', this)">
+        <i class="fa-solid fa-file-circle-plus"></i> Submit Complaint
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('historySection', this)">
+        <i class="fa-solid fa-clock-rotate-left"></i> Complaint History
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('trackingSection', this)">
+        <i class="fa-solid fa-map-location-dot"></i> Live Tracking
+      </li>
+      <li onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </li>
+    </ul>
+  </div>
+
+  <div class="main-content" id="dashboardSection">
+
+    <div class="topbar">
+      <div>
+        <h1>Citizen Dashboard</h1>
+        <p>Submit and track public grievances</p>
+      </div>
+      <div class="admin-box">
+        <i class="fa-solid fa-user"></i>
+        <span id="citizenName">Citizen</span>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon blue">
+          <i class="fa-solid fa-file-circle-exclamation"></i>
+        </div>
+        <div>
+          <h2 id="totalComplaints">0</h2>
+          <p>My Complaints</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon orange">
+          <i class="fa-solid fa-spinner"></i>
+        </div>
+        <div>
+          <h2 id="pendingComplaints">0</h2>
+          <p>Pending</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div>
+          <h2 id="resolvedComplaints">0</h2>
+          <p>Resolved</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" id="submitSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Submit New Grievance</h2>
+      </div>
+
+      <div class="form-grid" style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <div class="input-group" style="width: 100%;">
+          <label><i class="fa-solid fa-wand-magic-sparkles" style="color: #9b51e0; margin-right: 4px;"></i> AI Auto-Fill via Image</label>
+          <div class="location-input-wrapper" style="border: 1px dashed #9b51e0; background-color: rgba(155, 81, 224, 0.03);">
+            <i class="fa-solid fa-image" style="color: #9b51e0; margin-left: 10px;"></i>
+            <input type="file" id="aiImageInput" accept="image/*" style="border: none !important; color: #cbd5e1; font-family: inherit; font-weight: normal; cursor: pointer; padding-top: 12px;" onchange="analyzeImageWithAI(this)" />
+          </div>
+          <span id="aiStatus" class="status-text">Upload a civic issue photograph to extract names, title details, and issue statements automatically via AI.</span>
+        </div>
+
+        <div class="form-grid-inner" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div class="input-group">
+            <label>Citizen Name</label>
+            <input type="text" id="citizen" placeholder="Enter your full name" />
+          </div>
+          <div class="input-group">
+            <label>Complaint Title / Description</label>
+            <input type="text" id="issue" placeholder="E.g., Water Leakage, Streetlight Broken" />
+          </div>
+        </div>
+
+        <div class="input-group" style="width: 100%;">
+          <label>Incident Location</label>
+          <div class="location-input-wrapper">
+            <i class="fa-solid fa-location-dot" style="color: #637381; margin-left: 10px;"></i>
+            <input type="text" id="locationDisplay" placeholder="No location coordinates synchronized yet" readonly />
+            
+            <button type="button" class="location-btn" onclick="fetchGPSCoordinates()">
+              <i class="fa-solid fa-location-crosshairs"></i> Fetch Location
+            </button>
+          </div>
+          <span id="locationStatus" class="status-text">Click the button to pull live GPS tracking metadata.</span>
+        </div>
+
+        <input type="hidden" id="lat" />
+        <input type="hidden" id="lng" />
+
+      </div>
+
+      <button class="submit-btn" onclick="submitComplaint()" style="margin-top: 32px;">
+        <i class="fa-solid fa-paper-plane"></i> Dispatch Complaint
+      </button>
+    </div>
+
+    <div class="map-container" id="trackingSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Live Complaint Map</h2>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <div class="table-section" id="historySection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>My Complaint History</h2>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Issue</th>
+              <th>Department</th>
+              <th>Risk</th>
+              <th>Duplicate</th>
+              <th>Status</th>
+              <th>Cluster</th>
+            </tr>
+          </thead>
+          <tbody id="complaintsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chatbot-wrapper">
+    <div class="floating-chat-container" id="chatBody">
+      <div style="padding: 16px; background: linear-gradient(135deg, #4285f4, #9b51e0); color: white; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fa-solid fa-robot" style="margin-right: 8px;"></i> AI Assistant</span>
+        <i class="fa-solid fa-times" onclick="toggleChat()" style="cursor: pointer; font-size: 18px;"></i>
+      </div>
+      <div class="chat-messages" id="chatMessages" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #161c24;">
+        <div class="bot-message" style="text-align: left; background: #212b36; color: white; padding: 10px 14px; border-radius: 12px 12px 12px 0; width: fit-content; max-width: 85%; font-size: 13px; line-height: 1.5;">
+          Hello 👋<br>
+          I am your Smart Governance AI Assistant.
+        </div>
+      </div>
+      <div class="chat-input" style="display: flex; border-top: 1px solid #222b36; padding: 12px; background: #161c24; gap: 8px;">
+        <input type="text" id="chatInput" placeholder="Ask AI..." style="flex: 1; background: #212b36; border: 1px solid rgba(145, 158, 171, 0.2); color: white; padding: 10px 14px; border-radius: 8px; outline: none; font-size: 13px;" onkeydown="if(event.key === 'Enter') sendMessage()" />
+        <button onclick="sendMessage()" style="background: #4285f4; border: none; color: white; padding: 0 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="chat-trigger-circular-btn" onclick="toggleChat()">
+      <i class="fa-solid fa-comment-dots" id="chatIcon"></i>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:5000";
+    const token = localStorage.getItem("token");
+    const socket = io(API);
+
+    let map;
+    let markers = [];
+
+    if (!token) {
+      window.location = "login.html";
+    }
+
+    // Load Google Maps Dynamically using Config Endpoint
+    async function loadGoogleMapsScript() {
+      try {
+        const res = await fetch(`${API}/api/config`);
+        const config = await res.json();
+        
+        if (!config.googleMapsApiKey) {
+          console.error("Google Maps API Key missing from backend config.");
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initGoogleMap`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error("Failed to load Google Maps config:", error);
+      }
+    }
+
+    // Callback called when Google Maps script finishes loading
+    function initGoogleMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 22.7196, lng: 75.8577 },
+        zoom: 12,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+          { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+          { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+          { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+          { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+          { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+          { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+          { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+          { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+        ]
+      });
+
+      // Once map finishes preparing, draw stored records out
+      loadComplaints();
+    }
+
+    function addMarker(lat, lng, issue) {
+      if (!map) return;
+      
+      const position = { lat: parseFloat(lat), lng: parseFloat(lng) };
+      
+      const infowindow = new google.maps.InfoWindow({
+        content: `<div style="color: #000; font-family: sans-serif; font-size:13px; font-weight:500;">${issue}</div>`
+      });
+
+      const marker = new google.maps.Marker({
+        position: position,
+        map: map,
+        title: issue
+      });
+
+      marker.addListener("click", () => {
+        infowindow.open(map, marker);
+      });
+
+      markers.push(marker);
+    }
+
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById("appSidebar");
+      const icon = document.getElementById("sidebarMenuIcon");
+      sidebar.classList.toggle("mobile-open");
+
+      if(sidebar.classList.contains("mobile-open")) {
+        icon.className = "fa-solid fa-xmark";
+      } else {
+        icon.className = "fa-solid fa-bars";
+      }
+    }
+
+    function scrollToSection(id, element) {
+      const target = document.getElementById(id);
+      document.getElementById("appSidebar").classList.remove("mobile-open");
+      document.getElementById("sidebarMenuIcon").className = "fa-solid fa-bars";
+
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+        document.querySelectorAll('.sidebar ul li.sidebar-item').forEach(li => {
+          li.classList.remove('active');
+        });
+        element.classList.add('active');
+      }
+    }
+
+    function fetchGPSCoordinates() {
+      const statusText = document.getElementById("locationStatus");
+      const displayField = document.getElementById("locationDisplay");
+
+      if (!navigator.geolocation) {
+        statusText.innerText = "Error: Geolocation features not supported by your browser.";
+        statusText.style.color = "#ff5630";
+        return;
+      }
+
+      statusText.innerText = "Connecting to satellite GPS arrays...";
+      statusText.style.color = "#ffab00";
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+
+          document.getElementById("lat").value = lat;
+          document.getElementById("lng").value = lng;
+
+          displayField.value = `LAT: ${lat} , LNG: ${lng}`;
+          statusText.innerText = "✓ High-accuracy hardware validation sync complete.";
+          statusText.style.color = "#22c55e";
+          
+          if (map) {
+            map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
+            map.setZoom(14);
+          }
+        },
+        (error) => {
+          statusText.innerText = `Error context: ${error.message}. Loaded default placeholder matrix.`;
+          statusText.style.color = "#ff5630";
+          
+          document.getElementById("lat").value = "22.7196";
+          document.getElementById("lng").value = "75.8577";
+          displayField.value = "LAT: 22.7196 , LNG: 75.8577 (Fallback)";
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+
+    function readImageAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (err) => reject(err);
+      });
+    }
+
+    async function analyzeImageWithAI(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const aiStatus = document.getElementById("aiStatus");
+      aiStatus.innerText = "Converting image parameters and calculating vision tokens...";
+      aiStatus.style.color = "#ffab00";
+
+      try {
+        const base64Image = await readImageAsBase64(file);
+        aiStatus.innerText = "Running multi-modal analysis down on system backends...";
+
+        const res = await fetch(`${API}/api/analyze-image`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "authorization": token
+          },
+          body: JSON.stringify({ image: base64Image })
+        });
+
+        if (!res.ok) throw new Error("AI analysis endpoint error");
+
+        const data = await res.json();
+
+        if (data.citizenName) {
+          document.getElementById("citizen").value = data.citizenName;
+        }
+        if (data.problemStatement) {
+          document.getElementById("issue").value = data.problemStatement;
+        }
+
+        aiStatus.innerText = "✓ Processing complete! Title, citizen profile, and descriptions synchronized.";
+        aiStatus.style.color = "#22c55e";
+
+      } catch (error) {
+        console.error(error);
+        aiStatus.innerText = "AI vision failure. Please insert complaint context text variables manually.";
+        aiStatus.style.color = "#ff5630";
+      }
+    }
+
+    async function loadComplaints() {
+      const res = await fetch(`${API}/api/complaints`, {
+        headers: { authorization: token },
+      });
+      const data = await res.json();
+
+      let html = "";
+      let pending = 0;
+      let resolved = 0;
+
+      data.forEach(c => {
+        if (c.status !== "Resolved") {
+          pending++;
+        } else {
+          resolved++;
+        }
+
+        html += `
+        <tr>
+          <td>${c.issue}</td>
+          <td>${c.department || 'General'}</td>
+          <td><span class="risk ${c.risk ? c.risk.toLowerCase() : 'low'}">${c.risk || 'Low'}</span></td>
+          <td>${c.duplicate ? "Yes" : "No"}</td>
+          <td>${c.status}</td>
+          <td>${c.cluster || '0'}</td>
+        </tr>`;
+
+        if (c.location && c.location.lat && c.location.lng) {
+          addMarker(c.location.lat, c.location.lng, c.issue);
+        } else if (c.lat && c.lng) {
+          addMarker(c.lat, c.lng, c.issue);
+        }
+      });
+
+      document.getElementById("complaintsTable").innerHTML = html;
+      document.getElementById("totalComplaints").innerText = data.length;
+      document.getElementById("pendingComplaints").innerText = pending;
+      document.getElementById("resolvedComplaints").innerText = resolved;
+    }
+
+    async function submitComplaint() {
+      const citizen = document.getElementById("citizen").value;
+      const issue = document.getElementById("issue").value;
+      const lat = document.getElementById("lat").value;
+      const lng = document.getElementById("lng").value;
+
+      if (!citizen || !issue || !lat || !lng) {
+        alert("Please ensure your coordinates are synchronized via 'Fetch Location' before posting.");
+        return;
+      }
+
+      const res = await fetch(`${API}/api/complaints`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: token,
+        },
+        body: JSON.stringify({ citizen, issue, lat, lng }),
+      });
+
+      const data = await res.json();
+      alert(data.message || "Grievance submitted successfully!");
+
+      document.getElementById("citizen").value = "";
+      document.getElementById("issue").value = "";
+      document.getElementById("lat").value = "";
+      document.getElementById("lng").value = "";
+      document.getElementById("locationDisplay").value = "";
+      document.getElementById("aiImageInput").value = "";
+      document.getElementById("locationStatus").innerText = "Click the button to pull live GPS tracking metadata.";
+      document.getElementById("locationStatus").style.color = "#637381";
+      document.getElementById("aiStatus").innerText = "Upload a civic issue photograph to extract names, title details, and issue statements automatically via AI.";
+      document.getElementById("aiStatus").style.color = "#637381";
+
+      loadComplaints();
+    }
+
+    socket.on("newComplaint", (complaint) => {
+      if (complaint) {
+        const lat = complaint.location ? complaint.location.lat : complaint.lat;
+        const lng = complaint.location ? complaint.location.lng : complaint.lng;
+        if (lat && lng) {
+          addMarker(lat, lng, complaint.issue);
+        }
+      }
+      loadComplaints();
+    });
+
+    socket.on("statusUpdated", () => {
+      loadComplaints();
+    });
+
+    function toggleChat() {
+      const body = document.getElementById("chatBody");
+      const icon = document.getElementById("chatIcon");
+      
+      body.classList.toggle("active");
+      
+      if (body.classList.contains("active")) {
+        icon.className = "fa-solid fa-xmark";
+      } else {
+        icon.className = "fa-solid fa-comment-dots";
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("chatInput");
+      const message = input.value;
+      if (!message) return;
+
+      const messages = document.getElementById("chatMessages");
+      messages.innerHTML += `
+      <div class="user-message" style="text-align: right; background: #4285f4; color: white; padding: 10px 14px; border-radius: 12px 12px 0 12px; width: fit-content; max-width: 85%; margin-left: auto; font-size: 13px; line-height: 1.5;">
+        ${message}
+      </div>`;
+
+      input.value = "";
+      messages.scrollTop = messages.scrollHeight;
+
+      const res = await fetch(`${API}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+
+      const data = await res.json();
+      messages.innerHTML += `
+      <div class="bot-message" style="text-align: left; background: #212b36; color: white; padding: 10px 14px; border-radius: 12px 12px 12px 0; width: fit-content; max-width: 85%; font-size: 13px; line-height: 1.5;">
+        ${data.reply}
+      </div>`;
+
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location = "login.html";
+    }
+
+    // Launch configuration trigger on load pipeline
+    loadGoogleMapsScript();
+  </script>
+</body>
+
+</html>

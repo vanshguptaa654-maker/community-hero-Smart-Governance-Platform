@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Governance | Officer Portal</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    .sidebar ul li {
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .alert-box {
+      background: rgba(231, 76, 60, 0.15);
+      border-left: 4px solid #e74c3c;
+      padding: 14px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    table select {
+      background-color: #242b3d;
+      color: #ffffff;
+      border: 1px solid #3f4c6b;
+      padding: 6px 12px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    /* ANALYSIS WIDGET BOXES */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .analysis-card {
+      background: #1a1f2c;
+      border: 1px solid #3f4c6b;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .analysis-card h3 {
+      margin-top: 0;
+      font-size: 16px;
+      color: #4285f4;
+      border-bottom: 1px solid #242b3d;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .category-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px dashed #242b3d;
+      font-size: 14px;
+    }
+
+    .category-badge {
+      background: #4285f4;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .chatbot-wrapper {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .chat-trigger-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4285f4, #9b51e0);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 24px;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .chat-trigger-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .chat-container-box {
+      display: none;
+      width: 360px;
+      height: 460px;
+      background: #1a1f2c;
+      border: 1px solid #3f4c6b;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      margin-bottom: 15px;
+      overflow: hidden;
+      flex-direction: column;
+      animation: slideUpFade 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    .chat-container-box.active {
+      display: flex;
+    }
+
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    @media screen and (max-width: 1024px) {
+      .sidebar { width: 200px; }
+      .main-content { margin-left: 200px; padding: 20px; }
+      .cards { grid-template-columns: repeat(2, 1fr) !important; gap: 15px; }
+    }
+
+    @media screen and (max-width: 768px) {
+      .sidebar { width: 100%; height: auto; position: relative; padding: 10px 0; }
+      .sidebar .logo h2 { display: inline-block; font-size: 18px; margin-left: 5px; }
+      .sidebar ul { display: flex; flex-wrap: wrap; justify-content: space-around; padding: 0; margin: 10px 0 0 0; }
+      .sidebar ul li { padding: 8px 12px; font-size: 13px; border-radius: 4px; }
+      .main-content { margin-left: 0 !important; padding: 15px; width: 100%; box-sizing: border-box; }
+      .topbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .cards { grid-template-columns: 1fr !important; gap: 12px; }
+      .table-section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      #map { height: 300px; }
+      .chat-container-box { width: calc(100vw - 40px); right: 0; height: 400px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="sidebar">
+    <div class="logo">
+      <i class="fa-solid fa-user-tie"></i>
+      <h2>Officer</h2>
+    </div>
+    <ul>
+      <li class="sidebar-item active" onclick="scrollToSection('dashboardSection', this)">
+        <i class="fa-solid fa-chart-line"></i> Dashboard
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('complaintsSection', this)">
+        <i class="fa-solid fa-file-circle-exclamation"></i> Complaints
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('trackingSection', this)">
+        <i class="fa-solid fa-location-dot"></i> Live Tracking
+      </li>
+      <li class="sidebar-item" onclick="scrollToSection('alertsSection', this)">
+        <i class="fa-solid fa-triangle-exclamation"></i> Alerts
+      </li>
+      <li onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </li>
+    </ul>
+  </div>
+
+  <div class="main-content" id="dashboardSection">
+
+    <div class="topbar">
+      <div>
+        <h1>Officer Dashboard</h1>
+        <p>Complaint management and tracking portal</p>
+      </div>
+      <div class="admin-box">
+        <i class="fa-solid fa-user-tie"></i>
+        <span id="officerName">Officer</span>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon blue">
+          <i class="fa-solid fa-file-circle-exclamation"></i>
+        </div>
+        <div>
+          <h2 id="totalComplaints">0</h2>
+          <p>Assigned Complaints</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon red">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div>
+          <h2 id="criticalComplaints">0</h2>
+          <p>Critical Cases</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon orange">
+          <i class="fa-solid fa-spinner"></i>
+        </div>
+        <div>
+          <h2 id="pendingComplaints">0</h2>
+          <p>Pending Cases</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div>
+          <h2 id="resolvedComplaints">0</h2>
+          <p>Resolved Cases</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top: 25px;">
+      <h2><i class="fa-solid fa-chart-pie"></i> Real-time Category & Status Metrics</h2>
+    </div>
+    <div class="analysis-grid">
+      <div class="analysis-card">
+        <h3><span>Resolved Problems</span> <i class="fa-solid fa-square-check" style="color:#2ecc71;"></i></h3>
+        <div id="resolvedCategoryList">
+          <p style="color: #bbb; font-size: 13px;">No resolved issues recorded yet.</p>
+        </div>
+      </div>
+
+      <div class="analysis-card">
+        <h3><span>Pending Problems</span> <i class="fa-solid fa-clock" style="color:#f39c12;"></i></h3>
+        <div id="pendingCategoryList">
+          <p style="color: #bbb; font-size: 13px;">No pending issues recorded yet.</p>
+        </div>
+      </div>
+
+      <div class="analysis-card">
+        <h3><span>Problem Frequency (Same Category)</span> <i class="fa-solid fa-layer-group" style="color:#4285f4;"></i></h3>
+        <div id="frequencyCategoryList">
+          <p style="color: #bbb; font-size: 13px;">Awaiting compilation sequence data...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container" id="trackingSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Live Complaint Tracking</h2>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <div class="table-section" id="complaintsSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Complaint Management</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Citizen</th>
+            <th>Issue</th>
+            <th>Department</th>
+            <th>Risk</th>
+            <th>Cluster</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="complaintsTable"></tbody>
+      </table>
+    </div>
+
+    <div class="table-section" id="alertsSection" style="scroll-margin-top: 20px;">
+      <div class="section-title">
+        <h2>Live Escalation Alerts</h2>
+      </div>
+      <div class="alerts-container" id="alertsContainer"></div>
+    </div>
+
+  </div>
+
+  <div class="chatbot-wrapper">
+    <div class="chat-container-box" id="chatBody">
+      <div style="padding: 15px; background: linear-gradient(135deg, #4285f4, #9b51e0); color: white; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fa-solid fa-robot"></i> AI Officer Assistant</span>
+        <i class="fa-solid fa-times" onclick="toggleChat()" style="cursor: pointer; font-size: 18px;"></i>
+      </div>
+      
+      <div class="chat-messages" id="chatMessages" style="flex: 1; padding: 15px; overflow-y: auto;">
+        <div class="bot-message" style="text-align: left; background: #242b3d; color: white; padding: 8px 12px; margin: 5px 0; border-radius: 8px 8px 8px 0; width: fit-content; max-width: 80%;">
+          Hello Officer 👋<br>
+          I can help with complaint analysis, governance insights, and AI recommendations.
+        </div>
+      </div>
+      
+      <div class="chat-input" style="display: flex; border-top: 1px solid #3f4c6b; padding: 10px; background: #1a1f2c;">
+        <input type="text" id="chatInput" placeholder="Ask AI..." style="flex: 1; background: #242b3d; border: 1px solid #3f4c6b; color: white; padding: 8px 12px; border-radius: 6px; outline: none;" onkeydown="if(event.key === 'Enter') sendMessage()" />
+        <button onclick="sendMessage()" style="background: #4285f4; border: none; color: white; padding: 8px 14px; margin-left: 8px; border-radius: 6px; cursor: pointer;">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="chat-trigger-btn" id="chatTrigger" onclick="toggleChat()">
+      <i class="fa-solid fa-comment-dots" id="chatIcon"></i>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:5000";
+    const token = localStorage.getItem("token");
+    let socket = null;
+    let googleMapInstance = null;
+
+    if (typeof io !== "undefined") {
+      socket = io(API);
+    } else {
+      console.warn("Socket.io script failed to load. Live updates disabled.");
+    }
+
+    if (!token) {
+      window.location = "login.html";
+    }
+
+    function scrollToSection(id, element) {
+      const target = document.getElementById(id);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+        document.querySelectorAll('.sidebar ul li.sidebar-item').forEach(li => {
+          li.classList.remove('active');
+        });
+        element.classList.add('active');
+      }
+    }
+
+    async function loadComplaints() {
+      try {
+        const res = await fetch(`${API}/api/complaints`, {
+          headers: { authorization: token },
+        });
+        if (!res.ok) throw new Error("Backend response error");
+
+        const data = await res.json();
+        let html = "";
+        let critical = 0;
+        let pending = 0;
+        let resolved = 0;
+
+        // Metric objects for mapping categories
+        let resolvedCategories = {};
+        let pendingCategories = {};
+        let totalCategoryFrequency = {};
+
+        data.forEach(c => {
+          // Fallback parsing category name safely
+          let categoryName = c.issue || 'Uncategorized';
+
+          // Compile overall category distribution totals
+          totalCategoryFrequency[categoryName] = (totalCategoryFrequency[categoryName] || 0) + 1;
+
+          if (c.risk === "Critical") { critical++; }
+          
+          if (c.status === "Resolved") {
+            resolved++;
+            resolvedCategories[categoryName] = (resolvedCategories[categoryName] || 0) + 1;
+          } else {
+            pending++;
+            pendingCategories[categoryName] = (pendingCategories[categoryName] || 0) + 1;
+          }
+
+          html += `
+          <tr>
+            <td>${c.citizen}</td>
+            <td>${categoryName}</td>
+            <td>${c.department || 'General'}</td>
+            <td><span class="risk ${c.risk ? c.risk.toLowerCase() : 'low'}">${c.risk || 'Low'}</span></td>
+            <td>${c.cluster || '0'}</td>
+            <td>${c.status}</td>
+            <td>
+              <select onchange="updateStatus('${c._id}', this.value)">
+                <option value="" disabled selected>Change</option>
+                <option value="Under Review" ${c.status === 'Under Review' ? 'selected' : ''}>Under Review</option>
+                <option value="Assigned" ${c.status === 'Assigned' ? 'selected' : ''}>Assigned</option>
+                <option value="In Progress" ${c.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Resolved" ${c.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+              </select>
+            </td>
+          </tr>`;
+        });
+
+        // Set Main Card Counters
+        document.getElementById("complaintsTable").innerHTML = html;
+        document.getElementById("totalComplaints").innerText = data.length;
+        document.getElementById("criticalComplaints").innerText = critical;
+        document.getElementById("pendingComplaints").innerText = pending;
+        document.getElementById("resolvedComplaints").innerText = resolved;
+
+        // Render Analytics Breakdowns
+        renderCategoryObject(resolvedCategories, "resolvedCategoryList", "#2ecc71");
+        renderCategoryObject(pendingCategories, "pendingCategoryList", "#f39c12");
+        renderCategoryObject(totalCategoryFrequency, "frequencyCategoryList", "#4285f4");
+
+      } catch (err) {
+        console.error("Failed to load complaints:", err);
+      }
+    }
+
+    // Helper method to convert category metrics object to HTML components
+    function renderCategoryObject(dataObject, containerId, dynamicBadgeColor) {
+      const targetElement = document.getElementById(containerId);
+      let dynamicHTML = "";
+      
+      const keys = Object.keys(dataObject);
+      if(keys.length === 0) {
+        targetElement.innerHTML = `<p style="color: #bbb; font-size: 13px;">No active data found for this segment.</p>`;
+        return;
+      }
+
+      keys.forEach(categoryKey => {
+        dynamicHTML += `
+          <div class="category-item">
+            <span>${categoryKey}</span>
+            <span class="category-badge" style="background-color: ${dynamicBadgeColor}">${dataObject[categoryKey]} case(s)</span>
+          </div>`;
+      });
+      targetElement.innerHTML = dynamicHTML;
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        await fetch(`${API}/api/complaints/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: token,
+          },
+          body: JSON.stringify({ status }),
+        });
+        loadComplaints();
+      } catch (err) {
+        console.error("Status update pipeline failed:", err);
+      }
+    }
+
+    /* Dynamically fetch API Key and Inject Google Maps script safely */
+    async function initGoogleMapsSetup() {
+      try {
+        const response = await fetch(`${API}/api/config`);
+        const config = await response.json();
+        
+        if (!config.googleMapsApiKey) {
+          throw new Error("Google Maps API Key missing from backend config route.");
+        }
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initializeGoogleMapInstance`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error("Failed loading map settings initialization sequence:", error);
+      }
+    }
+
+    window.initializeGoogleMapInstance = function() {
+      googleMapInstance = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 22.7196, lng: 75.8577 },
+        zoom: 12,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#1a1f2c" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#1a1f2c" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#0f131a" }] }
+        ]
+      });
+      loadHeatmap();
+    };
+
+    async function loadHeatmap() {
+      if (!googleMapInstance) return;
+      try {
+        const res = await fetch(`${API}/api/heatmap`, {
+          headers: { authorization: token },
+        });
+        if (!res.ok) throw new Error("Heatmap fetch error");
+        const data = await res.json();
+
+        data.forEach(point => {
+          let fillColor = "#2ecc71";
+          if (point.risk === "Critical" || point.risk === "High") {
+            fillColor = "#e74c3c";
+          }
+
+          new google.maps.Circle({
+            strokeColor: fillColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: fillColor,
+            fillOpacity: 0.35,
+            map: googleMapInstance,
+            center: { lat: parseFloat(point.lat), lng: parseFloat(point.lng) },
+            radius: 300
+          });
+        });
+      } catch (err) {
+        console.error("Failed to load map data objects:", err);
+      }
+    }
+
+    async function loadInitialAlerts() {
+      try {
+        const res = await fetch(`${API}/api/alerts`, {
+          headers: { authorization: token }
+        });
+        if (res.ok) {
+          const alerts = await res.json();
+          let html = "";
+          alerts.forEach(alert => {
+            const txt = typeof alert === 'object' ? alert.message : alert;
+            html += `<div class="alert-box">🚨 ${txt}</div>`;
+          });
+          document.getElementById("alertsContainer").innerHTML = html;
+        }
+      } catch (err) {
+        console.error("Historical alerts request pipeline failed:", err);
+      }
+    }
+
+    if (socket) {
+      socket.on("criticalAlert", (alert) => {
+        const div = document.createElement("div");
+        div.className = "alert-box";
+        const payloadMessage = typeof alert === 'object' ? alert.message : alert;
+        div.innerHTML = `🚨 ${payloadMessage}`;
+        document.getElementById("alertsContainer").prepend(div);
+      });
+
+      socket.on("newComplaint", () => { loadComplaints(); });
+      socket.on("statusUpdated", () => { loadComplaints(); });
+    }
+
+    function toggleChat() {
+      const body = document.getElementById("chatBody");
+      const icon = document.getElementById("chatIcon");
+      body.classList.toggle("active");
+      icon.className = body.classList.contains("active") ? "fa-solid fa-xmark" : "fa-solid fa-comment-dots";
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("chatInput");
+      const message = input.value;
+      if (!message) return;
+
+      const messages = document.getElementById("chatMessages");
+      messages.innerHTML += `
+      <div class="user-message" style="text-align: right; background: #4284f4; color: white; padding: 8px 12px; margin: 5px 0; border-radius: 8px 8px 0 8px; width: fit-content; max-width: 80%; margin-left: auto;">
+        ${message}
+      </div>`;
+      
+      input.value = "";
+      messages.scrollTop = messages.scrollHeight;
+
+      try {
+        const res = await fetch(`${API}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+
+        const data = await res.json();
+        messages.innerHTML += `
+        <div class="bot-message" style="text-align: left; background: #242b3d; color: white; padding: 8px 12px; margin: 5px 0; border-radius: 8px 8px 8px 0; width: fit-content; max-width: 80%;">
+          ${data.reply}
+        </div>`;
+        messages.scrollTop = messages.scrollHeight;
+      } catch (err) {
+        console.error("AI Chatbot routing error:", err);
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location = "login.html";
+    }
+
+    // Run Initial routines
+    loadComplaints();
+    initGoogleMapsSetup();
+    loadInitialAlerts();
+  </script>
+</body>
+
+</html>
