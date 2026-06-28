@@ -725,175 +725,136 @@
 
   <script>
     // ===============================
-// Production Configuration
-// ===============================
+    // Production Configuration
+    // ===============================
 
-const API = "";
-const token = localStorage.getItem("token");
+    const API = "";
+    const token = localStorage.getItem("token");
 
-if (!token) {
-    window.location.href = "login.html";
-}
-
-const socket = io(window.location.origin, {
-    transports: ["websocket", "polling"],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    timeout: 20000
-});
-
-let map = null;
-let markers = [];
-    
-    // Load Google Maps Dynamically using Config Endpoint
-    async function loadGoogleMapsScript() {
-
-    try {
-
-        const response = await fetch("/api/config");
-
-        if (!response.ok) {
-            throw new Error("Unable to load backend configuration.");
-        }
-
-        const config = await response.json();
-
-        if (!config.googleMapsApiKey) {
-            console.error("Google Maps API Key missing.");
-            return;
-        }
-
-        if (window.google && window.google.maps) {
-            initGoogleMap();
-            return;
-        }
-
-        const existingScript = document.getElementById("googleMapsScript");
-
-        if (existingScript) {
-            existingScript.remove();
-        }
-
-        const script = document.createElement("script");
-
-        script.id = "googleMapsScript";
-
-        script.src =
-            `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initGoogleMap`;
-
-        script.async = true;
-        script.defer = true;
-
-        script.onerror = () => {
-            console.error("Failed to load Google Maps.");
-        };
-
-        document.body.appendChild(script);
-
-    } catch (err) {
-
-        console.error(err);
-
+    if (!token) {
+        window.location.href = "login.html";
     }
 
-}
+    const socket = io(window.location.origin, {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        timeout: 20000
+    });
+
+    let map = null;
+    let markers = [];
+        
+    // Load Google Maps Dynamically using Config Endpoint
+    async function loadGoogleMapsScript() {
+        try {
+            const response = await fetch("/api/config");
+
+            if (!response.ok) {
+                throw new Error("Unable to load backend configuration.");
+            }
+
+            const config = await response.json();
+
+            if (!config.googleMapsApiKey) {
+                console.error("Google Maps API Key missing.");
+                return;
+            }
+
+            if (window.google && window.google.maps) {
+                initGoogleMap();
+                return;
+            }
+
+            const existingScript = document.getElementById("googleMapsScript");
+
+            if (existingScript) {
+                existingScript.remove();
+            }
+
+            const script = document.createElement("script");
+
+            script.id = "googleMapsScript";
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&callback=initGoogleMap`;
+            script.async = true;
+            script.defer = true;
+
+            script.onerror = () => {
+                console.error("Failed to load Google Maps.");
+            };
+
+            document.body.appendChild(script);
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
 
     // Callback called when Google Maps script finishes loading
-   function initGoogleMap() {
-
-    map = new google.maps.Map(document.getElementById("map"), {
-
-        center: {
-            lat: 22.7196,
-            lng: 75.8577
-        },
-
-        zoom: 12,
-
-        mapTypeControl: false,
-
-        streetViewControl: false,
-
-        fullscreenControl: true,
-
-        styles: [
-            {
-                elementType: "geometry",
-                stylers: [
-                    {
-                        color: "#242f3e"
-                    }
-                ]
+    function initGoogleMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: {
+                lat: 22.7196,
+                lng: 75.8577
             },
-            {
-                elementType: "labels.text.fill",
-                stylers: [
-                    {
-                        color: "#d1d5db"
-                    }
-                ]
-            },
-            {
-                featureType: "water",
-                elementType: "geometry",
-                stylers: [
-                    {
-                        color: "#17263c"
-                    }
-                ]
-            }
-        ]
-
-    });
-
-    loadComplaints();
-
-    fetchGPSCoordinates();
-
-}
-
-      // Once map finishes preparing, draw stored records out
-      loadComplaints();
-    
-
-   function addMarker(lat, lng, issue) {
-
-    if (!map) return;
-
-    lat = parseFloat(lat);
-    lng = parseFloat(lng);
-
-    if (isNaN(lat) || isNaN(lng)) return;
-
-    const marker = new google.maps.Marker({
-        position: {
-            lat,
-            lng
-        },
-        map,
-        title: issue,
-        animation: google.maps.Animation.DROP
-    });
-
-    const infoWindow = new google.maps.InfoWindow({
-        content: `
-            <div style="padding:8px;color:#111;font-size:13px;">
-                <strong>Complaint</strong><br>
-                ${issue}
-            </div>
-        `
-    });
-
-    marker.addListener("click", () => {
-        infoWindow.open({
-            anchor: marker,
-            map
+            zoom: 12,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: true,
+            styles: [
+                {
+                    elementType: "geometry",
+                    stylers: [{ color: "#242f3e" }]
+                },
+                {
+                    elementType: "labels.text.fill",
+                    stylers: [{ color: "#d1d5db" }]
+                },
+                {
+                    featureType: "water",
+                    elementType: "geometry",
+                    stylers: [{ color: "#17263c" }]
+                }
+            ]
         });
-    });
 
-    markers.push(marker);
+        loadComplaints();
+        fetchGPSCoordinates();
+    }
 
-}
+    function addMarker(lat, lng, issue) {
+        if (!map) return;
+
+        lat = parseFloat(lat);
+        lng = parseFloat(lng);
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const marker = new google.maps.Marker({
+            position: { lat, lng },
+            map,
+            title: issue,
+            animation: google.maps.Animation.DROP
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+            content: `
+                <div style="padding:8px;color:#111;font-size:13px;">
+                    <strong>Complaint</strong><br>
+                    ${issue}
+                </div>
+            `
+        });
+
+        marker.addListener("click", () => {
+            infoWindow.open({
+                anchor: marker,
+                map
+            });
+        });
+
+        markers.push(marker);
+    }
 
     function toggleMobileSidebar() {
       const sidebar = document.getElementById("appSidebar");
@@ -1015,83 +976,58 @@ let markers = [];
     }
 
     async function loadComplaints() {
+        try {
+            if (!token) return;
 
-    try {
+            const response = await fetch(`${API}/api/complaints`, {
+                headers: { authorization: token }
+            });
 
-        if (!token) return;
+            if (!response.ok) throw new Error("Unable to load complaints.");
 
-        const response = await fetch(`${API}/api/complaints`, {
-            headers: {
-                authorization: token
-            }
-        });
+            const complaints = await response.json();
 
-        if (!response.ok)
-            throw new Error("Unable to load complaints.");
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
 
-        const complaints = await response.json();
+            let html = "";
+            let pending = 0;
+            let resolved = 0;
 
-        markers.forEach(marker => marker.setMap(null));
-        markers = [];
+            complaints.forEach(c => {
+                if (c.status === "Resolved") resolved++;
+                else pending++;
 
-        let html = "";
+                html += `
+                    <tr>
+                    <td>${c.issue}</td>
+                    <td>${c.department || "General"}</td>
+                    <td>
+                    <span class="risk ${(c.risk || "Low").toLowerCase()}">
+                    ${c.risk || "Low"}
+                    </span>
+                    </td>
+                    <td>${c.duplicate ? "Yes" : "No"}</td>
+                    <td>${c.status}</td>
+                    <td>${c.cluster || 0}</td>
+                    </tr>
+                `;
 
-        let pending = 0;
-        let resolved = 0;
+                const lat = c.location?.lat ?? c.lat;
+                const lng = c.location?.lng ?? c.lng;
 
-        complaints.forEach(c => {
+                if (lat && lng) addMarker(lat, lng, c.issue);
+            });
 
-            if (c.status === "Resolved")
-                resolved++;
-            else
-                pending++;
+            document.getElementById("complaintsTable").innerHTML = html;
+            document.getElementById("totalComplaints").innerText = complaints.length;
+            document.getElementById("pendingComplaints").innerText = pending;
+            document.getElementById("resolvedComplaints").innerText = resolved;
 
-            html += `
-<tr>
-<td>${c.issue}</td>
-<td>${c.department || "General"}</td>
-<td>
-<span class="risk ${(c.risk || "Low").toLowerCase()}">
-${c.risk || "Low"}
-</span>
-</td>
-<td>${c.duplicate ? "Yes" : "No"}</td>
-<td>${c.status}</td>
-<td>${c.cluster || 0}</td>
-</tr>
-`;
-
-            const lat =
-                c.location?.lat ??
-                c.lat;
-
-            const lng =
-                c.location?.lng ??
-                c.lng;
-
-            if (lat && lng)
-                addMarker(lat, lng, c.issue);
-
-        });
-
-        document.getElementById("complaintsTable").innerHTML = html;
-
-        document.getElementById("totalComplaints").innerText =
-            complaints.length;
-
-        document.getElementById("pendingComplaints").innerText =
-            pending;
-
-        document.getElementById("resolvedComplaints").innerText =
-            resolved;
-
-    } catch (err) {
-
-        console.error(err);
-
+        } catch (err) {
+            console.error(err);
+        }
     }
-
-}
 
     async function submitComplaint() {
       const citizen = document.getElementById("citizen").value;
@@ -1131,16 +1067,12 @@ ${c.risk || "Low"}
     }
 
     socket.on("newComplaint", () => {
-
-    loadComplaints();
-
-});
+        loadComplaints();
+    });
 
     socket.on("statusUpdated", () => {
-
-    loadComplaints();
-
-});
+        loadComplaints();
+    });
 
     function toggleChat() {
       const body = document.getElementById("chatBody");
