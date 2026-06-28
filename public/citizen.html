@@ -726,7 +726,7 @@
   <script>
     const API = "";
     const token = localStorage.getItem("token");
-    const socket = io(API);
+    const socket = io(window.location.origin);
 
     let map;
     let markers = [];
